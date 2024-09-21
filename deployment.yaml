@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ollama
+  name: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      volumes:
+      - name: ollama
+        hostPath:
+          path: /opt/ollama
+          type: DirectoryOrCreate
+      containers:
+      - image: ollama/ollama
+        name: ollama
+        env:
+        - name: OLLAMA_MAX_QUEUE
+          valueFrom:
+            configMapKeyRef:
+              name: ollama
+              key: queue
+        volumeMounts:
+        - name: ollama
+          mountPath: /root/.ollama
+        readinessProbe:
+          httpGet:
+            port: 11434
+      - image: alpine/httpie
+        name: pull-model
+        env:
+        - name: MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: ollama
+              key: model
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo -n $(MODEL) > /model
+          http -I --check-status http://localhost:11434/api/pull name=@/model
+          exec sleep infinity
+        readinessProbe:
+          exec:
+            command:
+            - http
+            - -I
+            - --check-status
+            - http://localhost:11434/api/show
+            - name=@/model

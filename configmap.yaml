@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  model: qwen2:0.5b
+  prompt: Give me the name of a rapper composing songs about Kubernetes.
+  queue: "4"
+kind: ConfigMap
+metadata:
+  name: ollama

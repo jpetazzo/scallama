@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: client
+  name: client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - |
+          set -e
+          while true; do 
+            echo ---
+            echo "Prompt: $(PROMPT)"
+            /bin/time -f "HTTP Request Time: %e" \
+                 curl -fssL http://ollama:11434/api/generate \
+                 -d '{"model": "$(MODEL)", "prompt": "$(PROMPT)", "stream": false}' \
+                 >/tmp/response.json
+            jq -r '"Server processing time: " + (.total_duration / 1000000 | round / 1000 | tostring)' \
+               </tmp/response.json
+            echo "Response: $(jq -r .response </tmp/response.json | head -n1 )"
+            rm /tmp/response.json
+          done
+        env:
+        - name: MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: ollama
+              key: model
+        - name: PROMPT
+          valueFrom:
+            configMapKeyRef:
+              name: ollama
+              key: prompt
+        image: nixery.dev/shell/curl/jq/time
+        name: client
