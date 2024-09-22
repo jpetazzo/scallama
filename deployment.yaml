@@ -52,10 +52,22 @@ spec:
           http -I --check-status http://localhost:11434/api/pull name=@/model
           exec sleep infinity
         readinessProbe:
+          # We don't need to hit the API endpoint every 10 seconds.
+          # However, we increase the timeout, because ollama sometimes
+          # takes a couple of seconds to reply, which causes the probe
+          # to fail (the default timeout is 1 second).
+          periodSeconds: 60
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 1
           exec:
             command:
             - http
             - -I
             - --check-status
-            - http://localhost:11434/api/show
-            - name=@/model
+            # Use "show" to just check if model has been pulled successfully.
+            #- name=@/model
+            #- http://localhost:11434/api/show
+            # Or use "generate" with an empty payload to force ollama to keep the model loaded in RAM.
+            - http://localhost:11434/api/generate
+            - model=@/model
